@@ -25,7 +25,14 @@ const initializeDBAndServer = async () => {
 };
 
 initializeDBAndServer();
-
+const convertDbObjectToResponseObject = (dbObject) => {
+  return {
+    playerId: dbObject.player_id,
+    playerName: dbObject.player_name,
+    jerseyNumber: dbObject.jersey_number,
+    role: dbObject.role,
+  };
+};
 // get
 
 app.get("/players/", async (request, response) => {
@@ -35,32 +42,36 @@ app.get("/players/", async (request, response) => {
       *
     FROM
       cricket_team`;
-  const book = await db.run(getBookQuery);
-  response.send(book);
+  const playersArray = await db.all(getBookQuery);
+  response.send(
+    playersArray.map((eachPlayer) =>
+      convertDbObjectToResponseObject(eachPlayer)
+    )
+  );
 });
 
 //get single object
-app.get("/players/", async (request, response) => {
+app.get("/players/:playerId/", async (request, response) => {
   const { playerId } = request.params;
   const getBookQuery = `
     SELECT
       *
     FROM
       cricket_team
-    where playerId=${playerId}`;
-  const book = await db.get(getBookQuery);
-  response.send(book);
+    where player_id=${playerId}`;
+  const player = await db.get(getBookQuery);
+  response.send(convertDbObjectToResponseObject(player));
 });
 
 //post
 app.post("/players/", async (request, response) => {
   const playerDetails = request.body;
-  const { player_id, playerName, jerseyNumber, role } = playerDetails;
+  const { playerName, jerseyNumber, role } = playerDetails;
   const addPlayerQuery = `
     INSERT INTO
-      (player_id,playerName,jerseyNumber,role)
+      cricket_team (player_name,jersey_number,role)
     VALUES
-      ('${player_id}',
+      (
       '${playerName}',
       '${jerseyNumber}',
       '${role}'  
@@ -75,19 +86,18 @@ app.post("/players/", async (request, response) => {
 app.put("/players/:playerId/", async (request, response) => {
   const { playerId } = request.params;
   const playerDetails = request.body;
-  const { player_id, playerName, jerseyNumber, role } = playerDetails;
+  const { playerName, jerseyNumber, role } = playerDetails;
   const updatePlayerQuery = `
     UPDATE
       cricket_team
     SET
-      playerId=${player_id};
-      playerName='${playerName}',
-      jerseyNumber=${jerseyNumber},
+      player_name='${playerName}',
+      jersey_number=${jerseyNumber},
       role='${role}'
     WHERE
       player_id = ${playerId};`;
-  const a = await db.get(updatePlayerQuery);
-  response.send(a);
+  const a = await db.run(updatePlayerQuery);
+  response.send("Player Details Updated");
 });
 
 //delete
@@ -98,7 +108,7 @@ app.delete("/players/:playerId/", async (request, response) => {
     DELETE FROM
       cricket_team
     WHERE
-      playerId = ${playerId};`;
+      player_id = ${playerId};`;
   await db.run(deletePlayerQuery);
   response.send("Player Removed");
 });
